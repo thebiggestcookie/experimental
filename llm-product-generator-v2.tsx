@@ -1,27 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ChevronRight, ChevronDown, AlertCircle, Save, Upload, Bug, RefreshCw } from 'lucide-react';
 
-// Simulated API calls
-const generateProductList = async (input) => {
-  await new Promise(resolve => setTimeout(resolve, 1000));
-  return ['Product A', 'Product B', 'Product C'];
-};
-
-const identifySubcategory = async (product) => {
-  await new Promise(resolve => setTimeout(resolve, 1000));
-  return 'Electronics > Smartphones';
-};
-
-const mapAttributes = async (product, subcategory) => {
-  await new Promise(resolve => setTimeout(resolve, 1000));
-  return [
-    { name: 'Brand', value: 'TechCo' },
-    { name: 'Model', value: 'X1' },
-    { name: 'Color', value: 'Black' },
-    { name: 'Storage', value: '128GB' },
-  ];
-};
-
 const ProductGenerator = () => {
   const [step, setStep] = useState(0);
   const [input, setInput] = useState('');
@@ -45,8 +24,16 @@ const ProductGenerator = () => {
     setLoading(true);
     setError(null);
     try {
-      const products = await generateProductList(input);
-      setGeneratedProducts(products);
+      const response = await fetch('/api/generate-product', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ productName: input, bulkUpload, llmProvider }),
+      });
+      if (!response.ok) throw new Error('Failed to generate product list');
+      const data = await response.json();
+      setGeneratedProducts(data.productList);
       setStep(1);
     } catch (err) {
       setError('Failed to generate product list. Please try again.');
@@ -59,8 +46,16 @@ const ProductGenerator = () => {
     setLoading(true);
     setError(null);
     try {
-      const category = await identifySubcategory(product);
-      setSubcategory(category);
+      const response = await fetch('/api/identify-subcategory', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ product, llmProvider }),
+      });
+      if (!response.ok) throw new Error('Failed to identify subcategory');
+      const data = await response.json();
+      setSubcategory(data.subcategory);
       setStep(2);
     } catch (err) {
       setError('Failed to identify subcategory. Please try again.');
@@ -72,8 +67,16 @@ const ProductGenerator = () => {
     setLoading(true);
     setError(null);
     try {
-      const mappedAttributes = await mapAttributes(selectedProduct, subcategory);
-      setAttributes(mappedAttributes);
+      const response = await fetch('/api/map-attributes', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ product: selectedProduct, subcategory, llmProvider }),
+      });
+      if (!response.ok) throw new Error('Failed to map attributes');
+      const data = await response.json();
+      setAttributes(data.attributes);
       setStep(3);
     } catch (err) {
       setError('Failed to map attributes. Please try again.');
@@ -81,10 +84,30 @@ const ProductGenerator = () => {
     setLoading(false);
   };
 
-  const handleSave = () => {
-    // In a real application, this would send the data to your backend
-    console.log('Saving product:', { product: selectedProduct, subcategory, attributes });
-    alert('Product saved successfully!');
+  const handleSave = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await fetch('/api/save-product', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ product: selectedProduct, subcategory, attributes }),
+      });
+      if (!response.ok) throw new Error('Failed to save product');
+      alert('Product saved successfully!');
+      // Reset the form
+      setStep(0);
+      setInput('');
+      setGeneratedProducts([]);
+      setSelectedProduct(null);
+      setSubcategory('');
+      setAttributes([]);
+    } catch (err) {
+      setError('Failed to save product. Please try again.');
+    }
+    setLoading(false);
   };
 
   const renderDebugInfo = () => (
