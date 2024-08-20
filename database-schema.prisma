@@ -1,0 +1,113 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id             String   @id @default(cuid())
+  name           String?
+  email          String   @unique
+  emailVerified  DateTime?
+  image          String?
+  hashedPassword String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  role           Role     @default(USER)
+  products       Product[]
+  gradedProducts Product[] @relation("GradedBy")
+}
+
+model Product {
+  id           String   @id @default(cuid())
+  name         String
+  description  String?
+  category     Category @relation(fields: [categoryId], references: [id])
+  categoryId   String
+  attributes   ProductAttribute[]
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  createdBy    User     @relation(fields: [createdById], references: [id])
+  createdById  String
+  gradedBy     User?    @relation("GradedBy", fields: [gradedById], references: [id])
+  gradedById   String?
+  gradedAt     DateTime?
+  aiGenerated  Boolean  @default(false)
+  aiConfidence Float?
+}
+
+model Category {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  parent    Category? @relation("SubCategories", fields: [parentId], references: [id])
+  parentId  String?
+  children  Category[] @relation("SubCategories")
+  products  Product[]
+  attributes Attribute[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Attribute {
+  id        String   @id @default(cuid())
+  name      String
+  type      AttributeType
+  category  Category @relation(fields: [categoryId], references: [id])
+  categoryId String
+  products  ProductAttribute[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ProductAttribute {
+  id         String   @id @default(cuid())
+  product    Product  @relation(fields: [productId], references: [id])
+  productId  String
+  attribute  Attribute @relation(fields: [attributeId], references: [id])
+  attributeId String
+  value      String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model LLMProvider {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  apiKey    String
+  baseUrl   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model PerformanceMetric {
+  id        String   @id @default(cuid())
+  metricType MetricType
+  value     Float
+  timestamp DateTime @default(now())
+}
+
+enum Role {
+  USER
+  ADMIN
+  GRADER
+}
+
+enum AttributeType {
+  TEXT
+  NUMBER
+  BOOLEAN
+  DATE
+}
+
+enum MetricType {
+  HUMAN_ACCURACY
+  AI_ACCURACY
+  PRODUCTS_PROCESSED
+  TOKEN_USAGE
+}
