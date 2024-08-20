@@ -2,40 +2,55 @@ import React, { useState, useEffect } from 'react';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { Calendar, ChevronDown, AlertCircle, Award, Zap, DollarSign, FileText, Users } from 'lucide-react';
 
-// Simulated data - in a real application, this would come from an API
-const performanceData = [
-  { date: '2023-08-01', humanAccuracy: 92, aiAccuracy: 85, productsProcessed: 1200, tokenUsage: 5000000 },
-  { date: '2023-08-02', humanAccuracy: 94, aiAccuracy: 86, productsProcessed: 1300, tokenUsage: 5200000 },
-  { date: '2023-08-03', humanAccuracy: 93, aiAccuracy: 87, productsProcessed: 1250, tokenUsage: 5100000 },
-  { date: '2023-08-04', humanAccuracy: 95, aiAccuracy: 88, productsProcessed: 1400, tokenUsage: 5300000 },
-  { date: '2023-08-05', humanAccuracy: 96, aiAccuracy: 89, productsProcessed: 1350, tokenUsage: 5250000 },
-  { date: '2023-08-06', humanAccuracy: 94, aiAccuracy: 88, productsProcessed: 1200, tokenUsage: 5000000 },
-  { date: '2023-08-07', humanAccuracy: 95, aiAccuracy: 90, productsProcessed: 1300, tokenUsage: 5200000 },
-];
-
-const modelComparisonData = [
-  { model: 'GPT-4', accuracy: 92, speed: 95, tokenUsage: 5000000 },
-  { model: 'Claude 2', accuracy: 90, speed: 97, tokenUsage: 4800000 },
-  { model: 'GPT-3.5', accuracy: 88, speed: 98, tokenUsage: 4500000 },
-];
-
-const topHumanGraders = [
-  { name: 'Alice', accuracy: 98, speed: 1500 },
-  { name: 'Bob', accuracy: 97, speed: 1450 },
-  { name: 'Charlie', accuracy: 96, speed: 1400 },
-  { name: 'Diana', accuracy: 95, speed: 1550 },
-  { name: 'Evan', accuracy: 94, speed: 1600 },
-];
-
 const Dashboard = () => {
+  const [performanceData, setPerformanceData] = useState([]);
+  const [modelComparisonData, setModelComparisonData] = useState([]);
+  const [topHumanGraders, setTopHumanGraders] = useState([]);
   const [dateRange, setDateRange] = useState('week');
   const [selectedModels, setSelectedModels] = useState(['GPT-4', 'Claude 2']);
   const [debugMode, setDebugMode] = useState(false);
+  const [loading, setLoading] = useState(true);
 
-  // In a real application, you'd fetch this data from an API
   useEffect(() => {
-    // Fetch data based on dateRange
+    fetchData();
   }, [dateRange]);
+
+  const fetchData = async () => {
+    setLoading(true);
+    try {
+      const [performanceResponse, modelComparisonResponse, gradersResponse] = await Promise.all([
+        fetch(`/api/performance-metrics?range=${dateRange}`),
+        fetch('/api/model-comparison'),
+        fetch('/api/top-human-graders')
+      ]);
+
+      const performanceData = await performanceResponse.json();
+      const modelComparisonData = await modelComparisonResponse.json();
+      const gradersData = await gradersResponse.json();
+
+      setPerformanceData(performanceData);
+      setModelComparisonData(modelComparisonData);
+      setTopHumanGraders(gradersData);
+
+      setLoading(false);
+    } catch (error) {
+      console.error('Error fetching data:', error);
+      setLoading(false);
+    }
+  };
+
+  const handleExport = () => {
+    // Implement export functionality
+    console.log('Exporting data...');
+  };
+
+  const handleRefresh = () => {
+    fetchData();
+  };
+
+  if (loading) {
+    return <div>Loading...</div>;
+  }
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
@@ -51,10 +66,22 @@ const Dashboard = () => {
               <option value="day">Today</option>
               <option value="week">This Week</option>
               <option value="month">This Month</option>
-              <option value="custom">Custom Range</option>
+              <option value="year">This Year</option>
             </select>
             <Calendar className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
           </div>
+          <button
+            onClick={handleExport}
+            className="px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+          >
+            Export Data
+          </button>
+          <button
+            onClick={handleRefresh}
+            className="px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+          >
+            Refresh
+          </button>
           <button
             onClick={() => setDebugMode(!debugMode)}
             className={`px-4 py-2 rounded-md ${debugMode ? 'bg-red-500 text-white' : 'bg-gray-200 text-gray-800'}`}
@@ -67,10 +94,10 @@ const Dashboard = () => {
       {/* Key Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
         {[
-          { title: 'Products Processed', value: '15,234', icon: <FileText size={24} />, change: '+5%' },
-          { title: 'Human Accuracy', value: '95%', icon: <Users size={24} />, change: '+2%' },
-          { title: 'AI Accuracy', value: '88%', icon: <Zap size={24} />, change: '+3%' },
-          { title: 'Token Usage', value: '52M', icon: <DollarSign size={24} />, change: '-1%' },
+          { title: 'Products Processed', value: performanceData.productsProcessed, icon: <FileText size={24} />, change: performanceData.productsProcessedChange },
+          { title: 'Human Accuracy', value: `${performanceData.humanAccuracy}%`, icon: <Users size={24} />, change: performanceData.humanAccuracyChange },
+          { title: 'AI Accuracy', value: `${performanceData.aiAccuracy}%`, icon: <Zap size={24} />, change: performanceData.aiAccuracyChange },
+          { title: 'Token Usage', value: performanceData.tokenUsage, icon: <DollarSign size={24} />, change: performanceData.tokenUsageChange },
         ].map((metric) => (
           <div key={metric.title} className="bg-white p-6 rounded-lg shadow">
             <div className="flex justify-between items-center mb-4">
@@ -78,8 +105,8 @@ const Dashboard = () => {
               {metric.icon}
             </div>
             <p className="text-3xl font-bold mb-2">{metric.value}</p>
-            <p className={`text-sm ${metric.change.startsWith('+') ? 'text-green-600' : 'text-red-600'}`}>
-              {metric.change} vs. previous period
+            <p className={`text-sm ${metric.change >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+              {metric.change >= 0 ? `+${metric.change}%` : `${metric.change}%`} vs. previous period
             </p>
           </div>
         ))}
@@ -89,7 +116,7 @@ const Dashboard = () => {
       <div className="bg-white p-6 rounded-lg shadow mb-6">
         <h3 className="text-lg font-semibold mb-4">Performance Over Time</h3>
         <ResponsiveContainer width="100%" height={300}>
-          <LineChart data={performanceData}>
+          <LineChart data={performanceData.timeSeriesData}>
             <CartesianGrid strokeDasharray="3 3" />
             <XAxis dataKey="date" />
             <YAxis yAxisId="left" />
@@ -98,7 +125,7 @@ const Dashboard = () => {
             <Legend />
             <Line yAxisId="left" type="monotone" dataKey="humanAccuracy" stroke="#8884d8" name="Human Accuracy" />
             <Line yAxisId="left" type="monotone" dataKey="aiAccuracy" stroke="#82ca9d" name="AI Accuracy" />
-            <Line yAxisId="right" type="monotone" dataKey="tokenUsage" stroke="#ffc658" name="Token Usage" />
+            <Line yAxisId="right" type="monotone" dataKey="productsProcessed" stroke="#ffc658" name="Products Processed" />
           </LineChart>
         </ResponsiveContainer>
       </div>
@@ -135,7 +162,7 @@ const Dashboard = () => {
             </thead>
             <tbody>
               {topHumanGraders.map((grader, index) => (
-                <tr key={grader.name} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                <tr key={grader.id} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{grader.name}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{grader.accuracy}%</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{grader.speed}</td>
@@ -156,7 +183,7 @@ const Dashboard = () => {
         <div className="bg-gray-100 p-6 rounded-lg shadow mb-6">
           <h3 className="text-lg font-semibold mb-4">Debug Information</h3>
           <pre className="whitespace-pre-wrap">
-            {JSON.stringify({ dateRange, selectedModels, performanceData: performanceData[performanceData.length - 1] }, null, 2)}
+            {JSON.stringify({ dateRange, selectedModels, performanceData: performanceData.timeSeriesData[performanceData.timeSeriesData.length - 1] }, null, 2)}
           </pre>
         </div>
       )}
